@@ -16,6 +16,12 @@ type Application struct {
 	Capabilities   []string          `yaml:"capabilities"`
 	Mixins         []string          `yaml:"mixins"`
 	Template       []AppTemplate     `yaml:"template"`
+	Service        *ServiceSpec       `yaml:"service"`
+}
+
+type ServiceSpec struct {
+	Enabled bool `yaml:"enabled"`
+	Port    int  `yaml:"port"`
 }
 
 type AppTemplate struct {

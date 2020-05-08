@@ -46,6 +46,21 @@ func ProcessApplication(app *model.App, releaseName string, env string, appDir s
 		return nil, err
 	}
 
+	if application.Service == nil {
+		application.Service = &model.ServiceSpec{
+			Port:    8080,
+			Enabled: true,
+		}
+	}
+	if application.Service.Enabled {
+		if application.Service.Port == 0 {
+			application.Service.Port = 8080
+		}
+		if application.Service.Port < 0 || application.Service.Port > 65535 {
+			return nil, fmt.Errorf("invalid port %d specified for %s", application.Service.Port, application.Name)
+		}
+	}
+
 	appValues := templates.Application{
 		Name:           app.Name,
 		Tag:            app.Version,
@@ -53,9 +68,14 @@ func ProcessApplication(app *model.App, releaseName string, env string, appDir s
 		Annotations:    application.Annotations,
 		LivenessProbe:  application.LivenessProbe,
 		ReadinessProbe: application.ReadinessProbe,
+		ServiceEnabled: application.Service.Enabled,
+		ContainerPort:  application.Service.Port,
 	}
 
-	GenerateResourceLimit(application, env, &appValues)
+	err = GenerateResourceLimit(application, env, &appValues)
+	if err != nil {
+		return nil, err
+	}
 	err = GenerateEnvVars(application, resourceDir, &appValues)
 	if err != nil {
 		return nil, err
@@ -105,7 +125,7 @@ func GenerateMixins(application *model.Application, resourceDir string, appValue
 }
 
 //Function to set resource limit, request and replicas
-func GenerateResourceLimit(application *model.Application, environment string, appValues *templates.Application) {
+func GenerateResourceLimit(application *model.Application, environment string, appValues *templates.Application) error {
 	appValues.Limits = make(map[string]string, 0)
 	//apply default values if missing
 	if len(application.Template) == 0 {
@@ -113,23 +133,25 @@ func GenerateResourceLimit(application *model.Application, environment string, a
 		appValues.Limits[memory] = MEMORY["default"]
 		appValues.Replicas = "1"
 		log.Println("[WARN] missing resource, applying default values for application", application.Name)
-		return
+		return nil
 	}
 	//Process app template
+	found := false
 	for _, tmpl := range application.Template {
 		if tmpl.Name == environment {
+			found = true
 			configs := tmpl.Config
 			cpuLimit := CPU["default"]
-			if val, ok := configs[cpu]; ok {
+			if val, ok := configs[cpu]; ok && val != "" {
 				cpuLimit = CPU[val]
 			}
 			memLimit := MEMORY["default"]
-			if val, ok := configs[memory]; ok {
+			if val, ok := configs[memory]; ok && val != "" {
 				memLimit = MEMORY[val]
 			}
 
 			replicaLimit := "1"
-			if val, ok := configs[replicas]; ok {
+			if val, ok := configs[replicas]; ok && val != "" {
 				replicaLimit = val
 			}
 			appValues.Limits[cpu] = cpuLimit
@@ -138,6 +160,10 @@ func GenerateResourceLimit(application *model.Application, environment string, a
 			break
 		}
 	}
+	if !found {
+		return fmt.Errorf("unknown environment %s", environment)
+	}
+	return nil
 }
 
 //Function to set environment variable from resources

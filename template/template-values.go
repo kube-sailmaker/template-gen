@@ -18,4 +18,6 @@ type Application struct {
 	Limits         map[string]string
 	Command        []string
 	Entrypoint     []string
+	ContainerPort  int
+	ServiceEnabled bool
 }

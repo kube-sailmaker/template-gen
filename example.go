@@ -34,6 +34,7 @@ func main() {
 	data, err := entry.TemplateGenerator(&appSpec, appDir, resourceDir, outputDir)
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 	fmt.Println("Generation Summary:")
 	for _, d := range data.Items {

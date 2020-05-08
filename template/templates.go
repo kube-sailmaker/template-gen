@@ -73,22 +73,23 @@ spec:
          imagePullPolicy: IfNotPresent
          {{ if .Entrypoint }}command: [{{ range $entry := .Entrypoint }}'{{$entry}}', {{ end }}]{{ end }}
          {{ if .Command }}args: [{{ range $cmd := .Command }}'{{$cmd}}', {{ end }}]{{ end }}
-         ports:
+
+         {{ if .ServiceEnabled -}}ports:
          - name: http
-           containerPort: 8080
-           protocol: TCP
-         livenessProbe:
+           containerPort: {{ .ContainerPort }}
+           protocol: TCP {{- end }}
+         {{ if .LivenessProbe -}}livenessProbe:
            httpGet:
              path: {{ .LivenessProbe }}
              port: http
-           initialDelaySeconds: 100
-           timeoutSeconds: 100                
-         readinessProbe:
+           initialDelaySeconds: 30
+           timeoutSeconds: 100{{- end }}
+         {{ if .ReadinessProbe -}}readinessProbe:
            httpGet:
              path: {{ .ReadinessProbe }}
              port: http
-           initialDelaySeconds: 100
-           timeoutSeconds: 100
+           initialDelaySeconds: 30
+           timeoutSeconds: 100 {{- end }}
          resources:
            limits:
              cpu: "{{ index .Limits "cpu" }}"

@@ -21,7 +21,7 @@ func createDirSafely(fileName string) error {
 }
 
 func Run(releaseTemplate *ReleaseTemplate, outputDir string) (*model.DeploymentItemSummary, error) {
-	tmplArray := []string{"ServiceTemplate", "DeploymentTemplate", "ServiceAccountTemplate"}
+	tmplArray := []string{ "DeploymentTemplate", "ServiceAccountTemplate"}
 	itemSummary := model.DeploymentItemSummary{}
 	items := make([]model.DeploymentItem, 0)
 	for _, application := range releaseTemplate.Application {
@@ -31,7 +31,14 @@ func Run(releaseTemplate *ReleaseTemplate, outputDir string) (*model.DeploymentI
 			return nil, cerr
 		}
 		log.Println("Generating template for: ", application.Name)
-		for _, tName := range tmplArray {
+		requiredTemplates := make([]string, 0)
+		for _, templateName := range tmplArray {
+			requiredTemplates = append(requiredTemplates, templateName)
+		}
+		if application.ServiceEnabled {
+			requiredTemplates = append(requiredTemplates, "ServiceTemplate")
+		}
+		for _, tName := range requiredTemplates {
 			tmpl, err := LoadTemplates(tName, &application)
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("[app]: %s, [error]: %v", application.Name, err))
