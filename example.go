@@ -12,13 +12,17 @@ func main() {
 		Name:    "busybox",
 		Version: "latest",
 	}
+	eodJob := model.App{
+		Name:    "eod-job",
+		Version: "latest",
+	}
 	nginx := model.App{
 		Name:    "nginx",
 		Version: "latest",
 	}
 
 	appList := make([]model.App, 0)
-	appList = append(appList, busybox, nginx)
+	appList = append(appList, busybox, nginx, eodJob)
 
 	appSpec := model.AppSpec{
 		Namespace:   "apps",

@@ -1,0 +1,53 @@
+#appname, probes
+name: busybox
+kind: job
+service:
+  enabled: false
+
+#how long a job will run
+activeDeadlineSeconds: 10
+
+# back off after # failure
+backoffLimit: 2
+
+#cleanup after certain seconds
+ttlSecondsAfterFinished: 30
+restartPolicy: Never #OnFailure
+
+#version, artifact id will be added by deployer
+annotations:
+  lang: java
+  artifact_type: microservice
+  framework: springboot
+  owner: team1/person
+  email: team/person email
+
+resources: []
+  
+#service account, env from resources, configmap from vault, file-password, auto injected  
+capabilities:
+  - prometheus
+  - vault
+  - file-password
+  - read-kubernetes
+
+mixins:
+  - resource-spec/sleep
+
+template:
+- name: test
+  config:
+    cpu: c05
+    memory: m1
+    logging_level: DEBUG
+
+- name: lab
+  config:
+    cpu: c1
+    memory: m2
+
+- name: prod
+  config:
+    replicas: 2
+    cpu: c3
+    memory: m3

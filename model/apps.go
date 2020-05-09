@@ -8,15 +8,20 @@ type Args struct {
 }
 
 type Application struct {
-	Name           string            `yaml:"name"`
-	LivenessProbe  string            `yaml:"liveness_probe"`
-	ReadinessProbe string            `yaml:"readiness_probe"`
-	Annotations    map[string]string `yaml:"annotations"`
-	Resources      []string          `yaml:"resources"`
-	Capabilities   []string          `yaml:"capabilities"`
-	Mixins         []string          `yaml:"mixins"`
-	Template       []AppTemplate     `yaml:"template"`
-	Service        *ServiceSpec       `yaml:"service"`
+	Name                    string            `yaml:"name"`
+	Kind                    string            `yaml:"kind"`
+	LivenessProbe           string            `yaml:"liveness_probe"`
+	ReadinessProbe          string            `yaml:"readiness_probe"`
+	Annotations             map[string]string `yaml:"annotations"`
+	Resources               []string          `yaml:"resources"`
+	Capabilities            []string          `yaml:"capabilities"`
+	Mixins                  []string          `yaml:"mixins"`
+	Template                []AppTemplate     `yaml:"template"`
+	Service                 *ServiceSpec      `yaml:"service"`
+	BackoffLimit            int               `yaml:"backoffLimit"`
+	ActiveDeadLine          int               `yaml:"activeDeadlineSeconds"`
+	TTLSecondsAfterFinished int               `yaml:"ttlSecondsAfterFinished"`
+	RestartPolicy           string            `yaml:"restartPolicy"`
 }
 
 type ServiceSpec struct {

@@ -17,6 +17,7 @@ var ServiceAccountTemplate = `apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: {{ .ReleaseName | ToLower }}-{{ .Name  | ToLower }}
+  namespace: {{ .Namespace }}
   labels:
     app: {{ .Name }}
     release: {{ .ReleaseName }}
@@ -27,6 +28,7 @@ var ServiceTemplate = `apiVersion: v1
 kind: Service
 metadata:
   name: {{ .ReleaseName | ToLower }}-{{ .Name  | ToLower }}
+  namespace: {{ .Namespace }}
   labels:
     app: {{ .Name }}
     release: {{ .ReleaseName }}
@@ -47,6 +49,7 @@ var DeploymentTemplate = `apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .ReleaseName | ToLower }}-{{ .Name  | ToLower }}
+  namespace: {{ .Namespace }}
   labels:
     app: {{ .Name }}
     release: {{ .ReleaseName }}
@@ -105,6 +108,50 @@ spec:
       tolerations:
 `
 
+var JobTemplate = `apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .ReleaseName | ToLower }}-{{ .Name  | ToLower }}
+  namespace: {{ .Namespace }}
+  labels:
+    app: {{ .Name }}
+    release: {{ .ReleaseName }}
+    version: {{ .Tag }}
+  annotations:{{ if .Annotations }}
+    {{ range $key, $value := .Annotations }}{{ $key }}: {{ $value }}
+    {{ end }}{{ end }}
+spec:
+  {{ if .Replicas -}}completions: {{ .Replicas }}{{else}}1{{- end }}
+  {{ if .Parallelism -}}parallelism: {{ .Parallelism }}{{- end }}
+  {{ if .BackoffLimit -}}backoffLimit: {{ .BackoffLimit }}{{- end }}
+  {{ if .ActiveDeadLine -}}activeDeadlineSeconds: {{ .ActiveDeadLine }}{{- end }}
+  {{ if .TTLSecondsAfterFinished -}}ttlSecondsAfterFinished: {{ .TTLSecondsAfterFinished }}{{- end }}
+  template:
+    spec:
+      serviceAccountName: {{ .ReleaseName | ToLower }}-{{ .Name  | ToLower }}
+      containers:
+       - name: {{ .Name }}
+         image: {{ .Name}}:{{ .Tag}}
+         imagePullPolicy: IfNotPresent
+         {{ if .Entrypoint }}command: [{{ range $entry := .Entrypoint }}'{{$entry}}', {{ end }}]{{ end }}
+         {{ if .Command }}args: [{{ range $cmd := .Command }}'{{$cmd}}', {{ end }}]{{ end }}
+
+         resources:
+           limits:
+             cpu: "{{ index .Limits "cpu" }}"
+             memory:  "{{ index .Limits "memory" }}"   
+           requests:
+             cpu:  "{{ index .Limits "cpu" }}"
+             memory:  "{{ index .Limits "memory" }}"
+         env:{{ range $key, $value := .EnvVars }}
+          - name: "{{ $key | ToUpper }}"
+            value: "{{ $value }}"{{end}}
+      restartPolicy: {{ if .RestartPolicy -}}{{ .RestartPolicy }}{{ else }}Never{{end}} 
+      affinity:
+      nodeSelector:
+      tolerations:
+`
+
 //LoadTemplates parse static template to helm chart
 func LoadTemplates(tName string, app *Application) (*template.Template, error) {
 	switch tName {
@@ -116,6 +163,8 @@ func LoadTemplates(tName string, app *Application) (*template.Template, error) {
 		return getTemplate(fmt.Sprintf("%s-service.yaml", app.Name), ServiceTemplate)
 	case "ServiceAccountTemplate":
 		return getTemplate(fmt.Sprintf("%s-serviceaccount.yaml", app.Name), ServiceAccountTemplate)
+	case "JobTemplate":
+		return getTemplate(fmt.Sprintf("%s-job.yaml", app.Name), JobTemplate)
 	}
 	return nil, nil
 }

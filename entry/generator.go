@@ -16,7 +16,7 @@ func TemplateGenerator(appSpec *model.AppSpec, appDir string, resourceDir string
 	appSpec.Normalise()
 
 	for _, app := range appSpec.Apps {
-		application, err := task.ProcessApplication(&app, appSpec.ReleaseName, appSpec.Environment, appDir, resourceDir)
+		application, err := task.ProcessApplication(&app, appSpec.ReleaseName, appSpec.Namespace, appSpec.Environment, appDir, resourceDir)
 		if err != nil {
 			return nil, err
 		}

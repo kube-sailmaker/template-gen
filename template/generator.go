@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func createDirSafely(fileName string) error {
@@ -21,7 +22,7 @@ func createDirSafely(fileName string) error {
 }
 
 func Run(releaseTemplate *ReleaseTemplate, outputDir string) (*model.DeploymentItemSummary, error) {
-	tmplArray := []string{ "DeploymentTemplate", "ServiceAccountTemplate"}
+
 	itemSummary := model.DeploymentItemSummary{}
 	items := make([]model.DeploymentItem, 0)
 	for _, application := range releaseTemplate.Application {
@@ -31,13 +32,8 @@ func Run(releaseTemplate *ReleaseTemplate, outputDir string) (*model.DeploymentI
 			return nil, cerr
 		}
 		log.Println("Generating template for: ", application.Name)
-		requiredTemplates := make([]string, 0)
-		for _, templateName := range tmplArray {
-			requiredTemplates = append(requiredTemplates, templateName)
-		}
-		if application.ServiceEnabled {
-			requiredTemplates = append(requiredTemplates, "ServiceTemplate")
-		}
+
+		requiredTemplates, kind := GetRequiredTemplates(&application)
 		for _, tName := range requiredTemplates {
 			tmpl, err := LoadTemplates(tName, &application)
 			if err != nil {
@@ -55,7 +51,7 @@ func Run(releaseTemplate *ReleaseTemplate, outputDir string) (*model.DeploymentI
 		}
 		items = append(items, model.DeploymentItem{
 			Name: application.Name,
-			Kind: "deployment",
+			Kind: kind,
 			Path: appWorkDir,
 		})
 	}
@@ -65,4 +61,22 @@ func Run(releaseTemplate *ReleaseTemplate, outputDir string) (*model.DeploymentI
 	}
 	return &itemSummary, nil
 
+}
+
+func GetRequiredTemplates(application *Application) ([]string, string) {
+	kind := ""
+	requiredTemplates := make([]string, 0)
+	requiredTemplates = append(requiredTemplates, "ServiceAccountTemplate")
+	if len(application.Kind) == 0 || application.Kind == "Deployment" {
+		requiredTemplates = append(requiredTemplates, "DeploymentTemplate")
+		kind = "deployment"
+	} else if strings.EqualFold(application.Kind, "Job") {
+		requiredTemplates = append(requiredTemplates, "JobTemplate")
+		kind = "job"
+	}
+
+	if application.ServiceEnabled {
+		requiredTemplates = append(requiredTemplates, "ServiceTemplate")
+	}
+	return requiredTemplates, kind
 }

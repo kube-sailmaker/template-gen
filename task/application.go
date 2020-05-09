@@ -35,7 +35,7 @@ var MEMORY = map[string]string{
 	"default": "256Mi",
 }
 
-func ProcessApplication(app *model.App, releaseName string, env string, appDir string, resourceDir string) (*templates.Application, error) {
+func ProcessApplication(app *model.App, releaseName string, namespace string, env string, appDir string, resourceDir string) (*templates.Application, error) {
 	if app == nil {
 		return nil, errors.New("app specification cannot be nil")
 	}
@@ -64,6 +64,8 @@ func ProcessApplication(app *model.App, releaseName string, env string, appDir s
 	appValues := templates.Application{
 		Name:           app.Name,
 		Tag:            app.Version,
+		Kind:           application.Kind,
+		Namespace:      namespace,
 		ReleaseName:    releaseName,
 		Annotations:    application.Annotations,
 		LivenessProbe:  application.LivenessProbe,
