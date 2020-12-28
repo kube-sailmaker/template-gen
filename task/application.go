@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	cpu      = "cpu"
-	memory   = "memory"
-	replicas = "replicas"
-	sep      = "/"
+	cpu        = "cpu"
+	memory     = "memory"
+	replicas   = "replicas"
+	sep        = "/"
+	filePrefix = "file:/"
 )
 
 //CPU value mapping
@@ -46,21 +47,6 @@ func ProcessApplication(app *model.App, releaseName string, namespace string, en
 		return nil, err
 	}
 
-	if application.Service == nil {
-		application.Service = &model.ServiceSpec{
-			Port:    8080,
-			Enabled: true,
-		}
-	}
-	if application.Service.Enabled {
-		if application.Service.Port == 0 {
-			application.Service.Port = 8080
-		}
-		if application.Service.Port < 0 || application.Service.Port > 65535 {
-			return nil, fmt.Errorf("invalid port %d specified for %s", application.Service.Port, application.Name)
-		}
-	}
-
 	appValues := templates.Application{
 		Name:           app.Name,
 		Tag:            app.Version,
@@ -70,10 +56,13 @@ func ProcessApplication(app *model.App, releaseName string, namespace string, en
 		Annotations:    application.Annotations,
 		LivenessProbe:  application.LivenessProbe,
 		ReadinessProbe: application.ReadinessProbe,
-		ServiceEnabled: application.Service.Enabled,
 		ContainerPort:  application.Service.Port,
+		NodeSelector:   application.NodeSelector,
 	}
 
+	CopyService(application, &appValues)
+	CopyConfigMap(application, &appValues)
+	CopyVolumeMount(application, &appValues)
 	err = GenerateResourceLimit(application, env, &appValues)
 	if err != nil {
 		return nil, err
@@ -88,6 +77,47 @@ func ProcessApplication(app *model.App, releaseName string, namespace string, en
 	}
 
 	return &appValues, nil
+}
+
+func CopyService(application *model.Application, appValues *templates.Application) {
+	if application.Service.Enabled {
+		appValues.Service = templates.ServiceSpec{
+			Enabled:    true,
+			Name:       application.Service.Name,
+			Type:       application.Service.Type,
+			Port:       application.Service.Port,
+			TargetPort: application.Service.TargetPort,
+		}
+	}
+}
+
+func CopyConfigMap(application *model.Application, appValues *templates.Application) {
+	appValues.ConfigMaps = make([]map[string]interface{}, 0)
+	for _, value := range application.ConfigMaps {
+		config := make(map[string]interface{}, 0)
+		for k, v := range value {
+			if strings.HasPrefix(v, filePrefix) {
+				filename := strings.Split(v, filePrefix)[1]
+				content, _ := functions.ReadFile(filename)
+				stringContent := fmt.Sprintf("|\n%s", string(*content))
+				config[filename] = stringContent
+			} else {
+				config[k] = v
+			}
+		}
+		appValues.ConfigMaps = append(appValues.ConfigMaps, config)
+	}
+}
+
+func CopyVolumeMount(application *model.Application, appValues *templates.Application) {
+	appValues.VolumeMounts = make([]templates.Mount, 0)
+	for _, value := range application.VolumeMounts {
+		mount := templates.Mount{
+			Name:      value.Name,
+			MountPath: value.MountPath,
+		}
+		appValues.VolumeMounts = append(appValues.VolumeMounts, mount)
+	}
 }
 
 //Function to set the mixins

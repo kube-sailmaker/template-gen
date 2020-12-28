@@ -34,15 +34,28 @@ metadata:
     release: {{ .ReleaseName }}
     version: {{ .Tag }}
 spec:
-  type: ClusterIP
+  type: {{ .Service.Type }}
   ports:
-  - name: http
-    port: 80
-    targetPort: http
+  - name: {{ .Service.Name }}
+    port: {{ .Service.Port }}
+    targetPort: {{ .Service.TargetPort }}
     protocol: TCP
   selector:
     app: {{ .Name }}
     release: {{ .ReleaseName }}
+`
+
+var ConfigMapTemplate = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .ReleaseName | ToLower }}-{{ .Name  | ToLower }}-configmap
+  labels:
+    app: {{ .Name }}
+    release: {{ .ReleaseName }}
+    version: {{ .Tag }}
+data:{{ if .ConfigMaps }}{{ range $config := .ConfigMaps }}{{ range $k, $v := $config }}
+  {{$k}}: {{$v}}{{ end }}{{ end }}
+{{ end }}
 `
 
 var DeploymentTemplate = `apiVersion: apps/v1
@@ -77,7 +90,7 @@ spec:
          {{ if .Entrypoint }}command: [{{ range $entry := .Entrypoint }}'{{$entry}}', {{ end }}]{{ end }}
          {{ if .Command }}args: [{{ range $cmd := .Command }}'{{$cmd}}', {{ end }}]{{ end }}
 
-         {{ if .ServiceEnabled -}}ports:
+         {{ if .Service.Enabled -}}ports:
          - name: http
            containerPort: {{ .ContainerPort }}
            protocol: TCP {{- end }}
@@ -103,9 +116,26 @@ spec:
          env:{{ range $key, $value := .EnvVars }}
           - name: "{{ $key | ToUpper }}"
             value: "{{ $value }}"{{end}}
-      affinity:
-      nodeSelector:
-      tolerations:
+         volumeMounts:
+         {{ if .VolumeMounts }}{{ range .VolumeMounts }}
+           - name: {{ .Name }}
+             mountPath: {{ .MountPath }}{{ end }}
+         {{ end }}
+         {{ if .ConfigMaps}}
+         - name: {{ .Name }}-configmap-volume
+           mountPath: /etc/config{{ end }}
+       {{ if .NodeSelector }}
+      nodeSelector:{{ range $key, $value := .NodeSelector }}
+		{{ $key }}: {{ $value }}{{ end }}{{ end }}
+      volumes:
+      {{ if .Volumes }}{{ range $i, $e := .Volumes }}
+	  - {{ range $k, $v := $e }}{{ $k }}: {{ $v }}
+      {{ end }}{{ end }}{{ end }}
+      {{ if .ConfigMaps }}
+      - name: {{ .Name }}-configmap-volume
+        configMap: 
+          name: {{ .ReleaseName | ToLower }}-{{ .Name  | ToLower }}-configmap
+      {{ end }}
 `
 
 var JobTemplate = `apiVersion: batch/v1
@@ -165,6 +195,8 @@ func LoadTemplates(tName string, app *Application) (*template.Template, error) {
 		return getTemplate(fmt.Sprintf("%s-serviceaccount.yaml", app.Name), ServiceAccountTemplate)
 	case "JobTemplate":
 		return getTemplate(fmt.Sprintf("%s-job.yaml", app.Name), JobTemplate)
+	case "ConfigMapTemplate":
+		return getTemplate(fmt.Sprintf("%s-configmap.yaml", app.Name), ConfigMapTemplate)
 	}
 	return nil, nil
 }

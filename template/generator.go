@@ -7,8 +7,17 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strings"
 )
+
+const (
+	DEPLOY         = "DeploymentTemplate"
+	JOB            = "JobTemplate"
+	CONFIGMAP      = "ConfigMapTemplate"
+	SERVICE        = "ServiceTemplate"
+	SERVICEACCOUNT = "ServiceAccountTemplate"
+)
+
+var templateMap = map[string]string{"deployment": DEPLOY, "job": JOB}
 
 func createDirSafely(fileName string) error {
 	dirName := filepath.Dir(fileName)
@@ -64,19 +73,21 @@ func Run(releaseTemplate *ReleaseTemplate, outputDir string) (*model.DeploymentI
 }
 
 func GetRequiredTemplates(application *Application) ([]string, string) {
-	kind := ""
+	kind := application.Kind
 	requiredTemplates := make([]string, 0)
-	requiredTemplates = append(requiredTemplates, "ServiceAccountTemplate")
-	if len(application.Kind) == 0 || application.Kind == "Deployment" {
-		requiredTemplates = append(requiredTemplates, "DeploymentTemplate")
+	requiredTemplates = append(requiredTemplates, SERVICEACCOUNT)
+	if application.Kind == "" {
+		requiredTemplates = append(requiredTemplates, DEPLOY)
 		kind = "deployment"
-	} else if strings.EqualFold(application.Kind, "Job") {
-		requiredTemplates = append(requiredTemplates, "JobTemplate")
-		kind = "job"
+	} else {
+		requiredTemplates = append(requiredTemplates, templateMap[kind])
+		kind = application.Kind
 	}
-
-	if application.ServiceEnabled {
-		requiredTemplates = append(requiredTemplates, "ServiceTemplate")
+	if len(application.ConfigMaps) > 0 {
+		requiredTemplates = append(requiredTemplates, CONFIGMAP)
+	}
+	if application.Service.Enabled {
+		requiredTemplates = append(requiredTemplates, SERVICE)
 	}
 	return requiredTemplates, kind
 }

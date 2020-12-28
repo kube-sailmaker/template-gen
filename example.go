@@ -8,21 +8,25 @@ import (
 )
 
 func main() {
-	busybox := model.App{
-		Name:    "busybox",
-		Version: "latest",
-	}
 	eodJob := model.App{
 		Name:    "eod-job",
+		Version: "latest",
+	}
+	busybox := model.App{
+		Name:    "busybox",
 		Version: "latest",
 	}
 	nginx := model.App{
 		Name:    "nginx",
 		Version: "latest",
 	}
+	aksu := model.App{
+		Name:    "aksu",
+		Version: "latest",
+	}
 
 	appList := make([]model.App, 0)
-	appList = append(appList, busybox, nginx, eodJob)
+	appList = append(appList, eodJob, busybox, nginx, aksu)
 
 	appSpec := model.AppSpec{
 		Namespace:   "apps",

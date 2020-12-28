@@ -41,6 +41,6 @@ type DeploymentItem struct {
 }
 
 type DeploymentItemSummary struct {
-	Namespace string  `json:"namespace"`
-	Items     []DeploymentItem  `json:"items"`
+	Namespace string           `json:"namespace"`
+	Items     []DeploymentItem `json:"items"`
 }

@@ -5,6 +5,9 @@ readiness_probe: /
 
 service:
   enabled: true
+  type: clusterIP
+  name: http
+  targetPort: 5000
   port: 80
 #version, artifact id will be added by deployer
 annotations:
